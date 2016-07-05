@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" 
+              xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+    
+  <Commands package="guidDeployPackage">
+    <Groups>
+      <Group guid="guidDeployPackageCmdSet" id="MyMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
+      </Group>
+    </Groups>
+  </Commands>
+
+  <Symbols>
+    <GuidSymbol name="guidDeployPackage" value="{e50281a0-7d6d-44e8-a00a-d438de685dc5}" />
+    <GuidSymbol name="guidDeployPackageCmdSet" value="{fe8d5c8c-14c7-4b95-915a-596342f72a24}">
+      <IDSymbol name="MyMenuGroup" value="0x1020" />
+      <IDSymbol name="DeployId" value="0x0100" />
+    </GuidSymbol>
+  </Symbols>
+</CommandTable>
