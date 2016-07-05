@@ -26,7 +26,7 @@ using DeployAfterBuild.Settings;
 namespace DeployAfterBuild
 {
     [PackageRegistration(UseManagedResourcesOnly = true)]
-    [InstalledProductRegistration("#1110", "#1112", "1.0", IconResourceID = 1400)]
+    [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(DeployPackage.PackageGuidString)]
     [ProvideAutoLoad(UIContextGuids80.SolutionExists)]
