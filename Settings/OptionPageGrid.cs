@@ -20,8 +20,25 @@ namespace DeployAfterBuild.Settings
 {
     internal sealed class OptionPageGrid : DialogPage
     {
+        private bool m_Enabled = false;
+
         [Category("Deploy")]
-        [DisplayName("Destination Path")]
+        [DisplayName("1. Enable")]
+        [Description("Enable the deploy feature")]
+        public bool Enabled
+        {
+            get
+            {
+                return m_Enabled;
+            }
+            set
+            {
+                m_Enabled = value;
+            }
+        }
+
+        [Category("Deploy")]
+        [DisplayName("2. Destination Path")]
         [Description("Path where the files should be deployed to")]
         public string DestinationPath { get; set; }
     }

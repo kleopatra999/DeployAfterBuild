@@ -30,7 +30,7 @@ namespace DeployAfterBuild
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(DeployPackage.PackageGuidString)]
     [ProvideAutoLoad(UIContextGuids80.SolutionExists)]
-    [ProvideOptionPage(typeof(OptionPageGrid), "Deploy", "Paths", 0, 0, true)]
+    [ProvideOptionPage(typeof(OptionPageGrid), "Deploy after Build", "Deploy", 0, 0, true)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     public sealed class DeployPackage : Package
     {
@@ -59,7 +59,7 @@ namespace DeployAfterBuild
         private void BuildEvents_OnBuildProjConfigDone(string Project, string ProjectConfig, 
             string Platform, string SolutionConfig, bool Success)
         {
-            if(Success == false)
+            if(Success == false || IsDeployEnabled() == false)
             {
                 return;
             }
@@ -142,6 +142,16 @@ namespace DeployAfterBuild
                 }
             }
             return string.Empty;
+        }
+
+        private bool IsDeployEnabled()
+        {
+            var page = (OptionPageGrid)GetDialogPage(typeof(OptionPageGrid));
+            if (page != null)
+            {
+                return page.Enabled;
+            }
+            return false;
         }
     }
 }

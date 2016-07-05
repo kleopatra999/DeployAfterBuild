@@ -4,6 +4,9 @@
         <Identity Id="DeployAfterBuild.Company.082b7368-808d-4849-a2a2-91d317312c6e" Version="1.0.0.0" Language="en-US" Publisher="David Roller" />
         <DisplayName>DeployAfterBuild</DisplayName>
         <Description xml:space="preserve">Deploy the build output to a virtual machine</Description>
+        <License>Resources/LICENSE</License>
+        <Icon>Images\DeployAfterBuild.ico</Icon>
+        <PreviewImage>Images\DeployAfterBuild.ico</PreviewImage>
         <Tags>deploy, build output, virtual machine, test</Tags>
     </Metadata>
     <Installation>
