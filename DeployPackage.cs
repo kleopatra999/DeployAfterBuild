@@ -23,6 +23,7 @@ using EnvDTE80;
 using System.IO;
 using DeployAfterBuild.Settings;
 using DeployAfterBuild.Helper;
+using Microsoft.VisualStudio.VCProjectEngine;
 
 namespace DeployAfterBuild
 {
@@ -54,9 +55,16 @@ namespace DeployAfterBuild
             Events2 events = (Events2)dte.Events;
             m_BuildEvents = events.BuildEvents;
 
+            m_BuildEvents.OnBuildBegin += BuildEvents_OnBuildBegin;
             m_BuildEvents.OnBuildProjConfigDone += BuildEvents_OnBuildProjConfigDone;
         }
         #endregion
+
+        private void BuildEvents_OnBuildBegin(vsBuildScope Scope, vsBuildAction Action)
+        {
+            var pane = CreateOrGetOutputPane(m_OutputPaneTitel);
+            pane.Clear();
+        }
 
         private void BuildEvents_OnBuildProjConfigDone(string Project, string ProjectConfig,
             string Platform, string SolutionConfig, bool Success)
@@ -67,6 +75,7 @@ namespace DeployAfterBuild
             }
 
             var pane = CreateOrGetOutputPane(m_OutputPaneTitel);
+            pane.Activate();
 
             pane.OutputStringLine("#############################################################");
             pane.OutputStringLine("Project: " + Project);
@@ -117,36 +126,76 @@ namespace DeployAfterBuild
             return false;
         }
 
+        private string GetProjectPath(Project project)
+        {
+            if (HasProperty(project.Properties, "FullPath"))
+            {
+                var prjFile = new FileInfo(project.Properties.Item("FullPath").Value.ToString());
+                return prjFile.Directory.FullName;
+            }
+
+            if (HasProperty(project.Properties, "ProjectFile"))
+            {
+                var prjFile = new FileInfo(project.Properties.Item("ProjectFile").Value.ToString());
+                return prjFile.Directory.FullName;
+            }
+            return string.Empty;
+        }
+
+        private string GetOutputPath(Project project)
+        {
+            var activeConvProp = project.ConfigurationManager.ActiveConfiguration.Properties;
+            if (HasProperty(activeConvProp, "OutputPath"))
+            {
+                return activeConvProp.Item("OutputPath").Value.ToString();
+            }
+            return string.Empty;
+        }
+
+        private string GetOutputFileName(Project project)
+        {
+            if (HasProperty(project.Properties, "OutputFileName"))
+            {
+                return project.Properties.Item("OutputFileName").Value.ToString();
+            }
+            
+            if(project.Object != null)
+            {
+                var vcProj = (VCProject)project.Object;
+                var config = vcProj.ActiveConfiguration;
+                var primaryOutput = new FileInfo(config.PrimaryOutput);
+                return primaryOutput.Name;
+            }
+
+            return string.Empty;
+        }
+
         private void CopyExecutable(Project project)
         {
             var pane = CreateOrGetOutputPane(m_OutputPaneTitel);
             try
             {
-                if (HasProperty(project.Properties, "FullPath") == false)
+                var projectPath = GetProjectPath(project);
+                if (string.IsNullOrWhiteSpace(projectPath))
                 {
-                    pane.OutputErrorLine("Wasn't able to find the full path property in project");
+                    pane.OutputErrorLine("Wasn't able to find the full path of the project");
                     return;
                 }
 
-                var prjFile = new FileInfo(project.Properties.Item("FullPath").Value.ToString());
-                var projectPath = prjFile.Directory.FullName;
-
-                var activeConvProp = project.ConfigurationManager.ActiveConfiguration.Properties;
-                if (HasProperty(activeConvProp, "OutputPath") == false)
+                var outputPath = GetOutputPath(project);
+                if (string.IsNullOrWhiteSpace(outputPath))
                 {
-                    pane.OutputErrorLine("Wasn't able to find the output path property in project");
+                    pane.OutputErrorLine("Wasn't able to find the output path of the project");
                     return;
                 }
 
-                var outputPath = activeConvProp.Item("OutputPath").Value.ToString();
-
-                if (HasProperty(project.Properties, "OutputFileName") == false)
+                var outputFileName = GetOutputFileName(project);
+                if (string.IsNullOrWhiteSpace(outputFileName))
                 {
-                    pane.OutputErrorLine("Wasn't able to find the output file name property in project");
+                    pane.OutputErrorLine("Wasn't able to find the output file name of the project");
                     return;
                 }
 
-                var outputFileName = project.Properties.Item("OutputFileName").Value.ToString();
                 var file = new FileInfo(Path.Combine(projectPath, outputPath, outputFileName));
 
                 var destPath = GetDeployDestination();
@@ -194,8 +243,7 @@ namespace DeployAfterBuild
         private OutputWindowPane CreateOrGetOutputPane(string title)
         {
             DTE2 dte = (DTE2)GetService(typeof(DTE));
-            OutputWindowPanes panes =
-                dte.ToolWindows.OutputWindow.OutputWindowPanes;
+            OutputWindowPanes panes = dte.ToolWindows.OutputWindow.OutputWindowPanes;
 
             try
             {
