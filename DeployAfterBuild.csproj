@@ -53,6 +53,7 @@
   <ItemGroup>
     <Compile Include="Deploy.cs" />
     <Compile Include="DeployPackage.cs" />
+    <Compile Include="Helper\OutputPaneExtension.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Settings\OptionPageGrid.cs">
       <SubType>Component</SubType>

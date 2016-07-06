@@ -22,6 +22,7 @@ using EnvDTE;
 using EnvDTE80;
 using System.IO;
 using DeployAfterBuild.Settings;
+using DeployAfterBuild.Helper;
 
 namespace DeployAfterBuild
 {
@@ -35,6 +36,7 @@ namespace DeployAfterBuild
     public sealed class DeployPackage : Package
     {
         private BuildEvents m_BuildEvents;
+        private readonly string m_OutputPaneTitel = "Deploy after Build";
         public const string PackageGuidString = "e50281a0-7d6d-44e8-a00a-d438de685dc5";
 
         public DeployPackage()
@@ -56,27 +58,47 @@ namespace DeployAfterBuild
         }
         #endregion
 
-        private void BuildEvents_OnBuildProjConfigDone(string Project, string ProjectConfig, 
+        private void BuildEvents_OnBuildProjConfigDone(string Project, string ProjectConfig,
             string Platform, string SolutionConfig, bool Success)
         {
-            if(Success == false || IsDeployEnabled() == false)
+            if (Success == false || IsDeployEnabled() == false)
             {
                 return;
             }
 
-            var dte = GetService(typeof(SDTE)) as DTE2;
-            if (dte.Solution == null)
-            {
-                return;
-            }
+            var pane = CreateOrGetOutputPane(m_OutputPaneTitel);
 
-            foreach (Project prj in dte.Solution.Projects)
+            pane.OutputStringLine("#############################################################");
+            pane.OutputStringLine("Project: " + Project);
+            pane.OutputStringLine("ProjectConfig: " + ProjectConfig);
+            pane.OutputStringLine("Platform: " + Platform);
+            pane.OutputStringLine("SolutionConfig: " + SolutionConfig);
+            pane.OutputStringLine("#############################################################");
+
+            try
             {
-                var prjFile = new FileInfo(prj.FileName);
-                if (prjFile.Name == Project)
+                var dte = GetService(typeof(SDTE)) as DTE2;
+                if (dte.Solution == null)
                 {
-                    CopyExecutable(prj);
+                    pane.OutputErrorLine("Wasn't able to access the solution object");
+                    return;
                 }
+
+                var givenPrjFile = new FileInfo(Project);
+                foreach (Project prj in dte.Solution.Projects)
+                {
+                    var prjFile = new FileInfo(prj.FileName);
+                    if (prjFile.Name == givenPrjFile.Name)
+                    {
+                        CopyExecutable(prj);
+                        return;
+                    }
+                }
+                pane.OutputErrorLine("Haven't found the project to deploy: " + Project);
+            }
+            catch (Exception error)
+            {
+                pane.OutputErrorLine("Failed to deploy: " + error.Message);
             }
         }
 
@@ -97,38 +119,53 @@ namespace DeployAfterBuild
 
         private void CopyExecutable(Project project)
         {
-            if (HasProperty(project.Properties, "FullPath") == false)
+            var pane = CreateOrGetOutputPane(m_OutputPaneTitel);
+            try
             {
-                return;
+                if (HasProperty(project.Properties, "FullPath") == false)
+                {
+                    pane.OutputErrorLine("Wasn't able to find the full path property in project");
+                    return;
+                }
+
+                var prjFile = new FileInfo(project.Properties.Item("FullPath").Value.ToString());
+                var projectPath = prjFile.Directory.FullName;
+
+                var activeConvProp = project.ConfigurationManager.ActiveConfiguration.Properties;
+                if (HasProperty(activeConvProp, "OutputPath") == false)
+                {
+                    pane.OutputErrorLine("Wasn't able to find the output path property in project");
+                    return;
+                }
+
+                var outputPath = activeConvProp.Item("OutputPath").Value.ToString();
+
+                if (HasProperty(project.Properties, "OutputFileName") == false)
+                {
+                    pane.OutputErrorLine("Wasn't able to find the output file name property in project");
+                    return;
+                }
+
+                var outputFileName = project.Properties.Item("OutputFileName").Value.ToString();
+                var file = new FileInfo(Path.Combine(projectPath, outputPath, outputFileName));
+
+                var destPath = GetDeployDestination();
+                if (string.IsNullOrWhiteSpace(destPath))
+                {
+                    pane.OutputErrorLine("The deployment destination path isn't specified");
+                    return;
+                }
+
+                var destFile = Path.Combine(destPath, outputFileName);
+                pane.OutputStringLine("Source file: " + file.FullName);
+                pane.OutputStringLine("Destination file: " + destFile);
+
+                file.CopyTo(destFile, true);
             }
-
-            var prjFile = new FileInfo(project.Properties.Item("FullPath").Value.ToString());
-            var projectPath = prjFile.Directory.FullName;
-
-            var activeConvProp = project.ConfigurationManager.ActiveConfiguration.Properties;
-            if (HasProperty(activeConvProp, "OutputPath") == false)
+            catch (Exception error)
             {
-                return;
+                pane.OutputErrorLine("Failed to deploy: " + error.Message);
             }
-
-            var outputPath = activeConvProp.Item("OutputPath").Value.ToString();
-
-            if (HasProperty(project.Properties, "OutputFileName") == false)
-            {
-                return;
-            }
-
-            var outputFileName = project.Properties.Item("OutputFileName").Value.ToString();
-            var file = new FileInfo(Path.Combine(projectPath, outputPath, outputFileName));
-
-            var destPath = GetDeployDestination();
-            if (string.IsNullOrWhiteSpace(destPath))
-            {
-                return;
-            }
-
-            var destFile = Path.Combine(destPath, outputFileName);
-            file.CopyTo(destFile, true);
         }
 
         private string GetDeployDestination()
@@ -152,6 +189,24 @@ namespace DeployAfterBuild
                 return page.Enabled;
             }
             return false;
+        }
+
+        private OutputWindowPane CreateOrGetOutputPane(string title)
+        {
+            DTE2 dte = (DTE2)GetService(typeof(DTE));
+            OutputWindowPanes panes =
+                dte.ToolWindows.OutputWindow.OutputWindowPanes;
+
+            try
+            {
+                // If the pane exists already, write to it.
+                return panes.Item(title);
+            }
+            catch (ArgumentException)
+            {
+                // Create a new pane and write to it.
+                return panes.Add(title);
+            }
         }
     }
 }
